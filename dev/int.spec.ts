@@ -76,11 +76,11 @@ describe('Viva Wallet Plugin integration tests', () => {
         paymentOrder: order.id,
         processedAt: new Date().toISOString(),
         statusId: 'A',
-        transactionId: 'TRX123',
+        transactionId: '550e8400-e29b-41d4-a716-446655440000', // Valid UUID
       },
     })
 
-    expect(transaction.transactionId).toBe('TRX123')
+    expect(transaction.transactionId).toBe('550e8400-e29b-41d4-a716-446655440000')
     expect(transaction.orderCode).toBe('9876543210987654')
     expect(transaction.statusId).toBe('A')
   })

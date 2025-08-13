@@ -39,13 +39,12 @@ jobs:
         run: pnpm test:int
         continue-on-error: true
       
-      # Skip E2E tests for now due to Playwright configuration issues
-      # - name: Run E2E tests
-      #   run: pnpm test:e2e
-      #   continue-on-error: true
+      - name: Run E2E tests
+        run: pnpm test:e2e
+        continue-on-error: true
       
       - name: SonarCloud Scan
-        uses: SonarSource/sonarcloud-github-action@master
+        uses: SonarSource/sonarqube-scan-action@v3.2.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
