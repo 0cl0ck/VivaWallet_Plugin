@@ -35,9 +35,14 @@ jobs:
         run: pnpm lint
         continue-on-error: true
       
-      - name: Run tests with coverage
-        run: pnpm test
+      - name: Run integration tests
+        run: pnpm test:int
         continue-on-error: true
+      
+      # Skip E2E tests for now due to Playwright configuration issues
+      # - name: Run E2E tests
+      #   run: pnpm test:e2e
+      #   continue-on-error: true
       
       - name: SonarCloud Scan
         uses: SonarSource/sonarcloud-github-action@master

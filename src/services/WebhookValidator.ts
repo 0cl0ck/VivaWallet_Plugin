@@ -36,7 +36,7 @@ export class WebhookValidator {
       
       // Log validation result in development mode
       if (process.env.NODE_ENV === 'development' && !isValid) {
-        console.debug('Invalid webhook signature (SHA-1)')
+        console.error('Invalid webhook signature (SHA-1)')
       }
       
       return isValid
@@ -66,7 +66,7 @@ export class WebhookValidator {
       
       // Log validation result in development mode
       if (process.env.NODE_ENV === 'development' && !isValid) {
-        console.debug('Invalid webhook signature (SHA-256)')
+        console.error('Invalid webhook signature (SHA-256)')
       }
       
       return isValid

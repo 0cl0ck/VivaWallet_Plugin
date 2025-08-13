@@ -42,13 +42,13 @@ describe('Viva Wallet Plugin integration tests', () => {
       data: {
         amount: 1000, // €10.00
         checkoutUrl: 'https://demo.vivapayments.com/checkout/test',
-        orderCode: 'TEST123',
-        sourceCode: 'test-source',
+        orderCode: '1234567890123456', // 16 digits as required
+        sourceCode: '1234', // 4 digits as required
         status: 'pending',
       },
     })
 
-    expect(order.orderCode).toBe('TEST123')
+    expect(order.orderCode).toBe('1234567890123456')
     expect(order.amount).toBe(1000)
     expect(order.status).toBe('pending')
   })
@@ -60,8 +60,8 @@ describe('Viva Wallet Plugin integration tests', () => {
       data: {
         amount: 2000, // €20.00
         checkoutUrl: 'https://demo.vivapayments.com/checkout/test456',
-        orderCode: 'TEST456',
-        sourceCode: 'test-source',
+        orderCode: '9876543210987654', // 16 digits as required
+        sourceCode: '5678', // 4 digits as required
         status: 'pending',
       },
     })
@@ -72,7 +72,7 @@ describe('Viva Wallet Plugin integration tests', () => {
       data: {
         amount: 2000,
         eventTypeId: 1796, // Payment Created
-        orderCode: 'TEST456',
+        orderCode: '9876543210987654', // Match the order code
         paymentOrder: order.id,
         processedAt: new Date().toISOString(),
         statusId: 'A',
@@ -81,7 +81,7 @@ describe('Viva Wallet Plugin integration tests', () => {
     })
 
     expect(transaction.transactionId).toBe('TRX123')
-    expect(transaction.orderCode).toBe('TEST456')
+    expect(transaction.orderCode).toBe('9876543210987654')
     expect(transaction.statusId).toBe('A')
   })
 
