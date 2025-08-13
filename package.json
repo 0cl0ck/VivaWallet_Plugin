@@ -29,7 +29,7 @@
   "scripts": {
     "build": "pnpm copyfiles && pnpm build:types && pnpm build:swc",
     "build:swc": "swc ./src -d ./dist --config-file .swcrc --strip-leading-paths",
-    "build:types": "tsc --outDir dist --rootDir ./src",
+    "build:types": "tsc --project tsconfig.build.json --outDir dist",
     "clean": "rimraf {dist,*.tsbuildinfo}",
     "copyfiles": "copyfiles -u 1 \"src/**/*.{html,css,scss,ttf,woff,woff2,eot,svg,jpg,png,json}\" dist/",
     "dev": "next dev dev --turbo",
@@ -76,7 +76,7 @@
     "rimraf": "3.0.2",
     "sharp": "0.34.2",
     "sort-package-json": "^2.10.0",
-    "typescript": "5.7.3",
+    "typescript": "5.6.3",
     "vite-tsconfig-paths": "^5.1.4",
     "vitest": "^3.1.2"
   },

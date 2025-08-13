@@ -15,30 +15,37 @@ export const defaultESLintIgnores = [
   '**/README.md',
   '**/eslint.config.js',
   '**/payload-types.ts',
-  '**/dist/',
+  '**/dist/**',
+  'dist/**',
+  'dist',
   '**/.yarn/',
-  '**/build/',
+  '**/build/**',
+  'build/**',
+  'build',
   '**/node_modules/',
   '**/temp/',
+  'dev/test-plugin.js',
+  '**/*.d.ts',
+  'dev/next-env.d.ts',
+  'dev/.next/**',
+  'dev/**/importMap.js',
+  '**/importMap.js',
 ]
 
 export default [
+  {
+    ignores: defaultESLintIgnores,
+  },
   ...payloadEsLintConfig,
   {
+    files: ['**/*.ts', '**/*.tsx', '**/*.js', '**/*.jsx', '**/*.mjs'],
     rules: {
       'no-restricted-exports': 'off',
+      'no-console': ['warn', { allow: ['warn', 'error'] }],
     },
-  },
-  {
     languageOptions: {
       parserOptions: {
-        sourceType: 'module',
-        ecmaVersion: 'latest',
-        projectService: {
-          maximumDefaultProjectFileMatchCount_THIS_WILL_SLOW_DOWN_LINTING: 40,
-          allowDefaultProject: ['scripts/*.ts', '*.js', '*.mjs', '*.spec.ts', '*.d.ts'],
-        },
-        // projectService: true,
+        project: ['./tsconfig.json', './dev/tsconfig.json'],
         tsconfigRootDir: import.meta.dirname,
       },
     },

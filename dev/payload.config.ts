@@ -3,9 +3,9 @@ import { lexicalEditor } from '@payloadcms/richtext-lexical'
 import { MongoMemoryReplSet } from 'mongodb-memory-server'
 import path from 'path'
 import { buildConfig } from 'payload'
-import { vivaWalletPlugin } from 'viva-wallet-plugin'
 import sharp from 'sharp'
 import { fileURLToPath } from 'url'
+import { vivaWalletPlugin } from 'viva-wallet-plugin'
 
 import { testEmailAdapter } from './helpers/testEmailAdapter.js'
 import { seed } from './seed.js'
@@ -59,8 +59,22 @@ const buildConfigWithMemoryDB = async () => {
     },
     plugins: [
       vivaWalletPlugin({
-        collections: {
-          posts: true,
+        admin: {
+          dashboard: true,
+          settings: true,
+        },
+        credentials: {
+          clientId: process.env.VIVA_CLIENT_ID,
+          clientSecret: process.env.VIVA_CLIENT_SECRET,
+          sourceCode: process.env.VIVA_SOURCE_CODE,
+        },
+        environment:
+          process.env.VIVA_ENVIRONMENT === 'live' || process.env.VIVA_ENVIRONMENT === 'production'
+            ? 'live'
+            : 'demo',
+        webhooks: {
+          autoVerify: true,
+          endpoint: '/api/viva-wallet/webhook',
         },
       }),
     ],

@@ -29,6 +29,10 @@
   "include": [
     "./src/**/*.ts",
     "./src/**/*.tsx",
+    "./dev/**/*.ts",
+    "./dev/**/*.tsx",
+    "./dev/**/*.mjs",
     "./dev/next-env.d.ts",
+    "./playwright.config.js",
   ],
 }

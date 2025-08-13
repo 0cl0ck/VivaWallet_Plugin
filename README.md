@@ -9,6 +9,12 @@ To build your own Payload plugin, all you need is:
 - An understanding of the basic Payload concepts
 - And some JavaScript/Typescript experience
 
+## Note de projet — Viva Wallet Smart Checkout
+
+Ce dépôt va évoluer pour devenir un plugin Payload intégrant le Smart Checkout de Viva Wallet.
+Le but est de proposer une intégration simple et idiomatique de Viva Wallet au sein d’un projet Payload.
+Le développement se fera en TypeScript (strict) et l’environnement de dev utilisera pnpm.
+
 ## Background
 
 Here is a short recap on how to integrate plugins with Payload, to learn more visit the [plugin overview page](https://payloadcms.com/docs/plugins/overview).

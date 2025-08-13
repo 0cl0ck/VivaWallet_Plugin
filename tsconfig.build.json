@@ -1,0 +1,17 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "rootDir": "./src"
+  },
+  "include": [
+    "./src/**/*.ts",
+    "./src/**/*.tsx"
+  ],
+  "exclude": [
+    "./dev/**/*",
+    "./dist/**/*",
+    "./node_modules/**/*",
+    "**/*.spec.ts",
+    "**/*.test.ts"
+  ]
+}
