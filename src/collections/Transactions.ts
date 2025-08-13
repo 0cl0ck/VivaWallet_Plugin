@@ -7,29 +7,41 @@ import type { VivaWalletPluginConfig } from '../types/index.js'
  * Stores all transaction events from Viva Wallet webhooks
  */
 export const TransactionsCollection = (
-  pluginOptions: VivaWalletPluginConfig
+  pluginOptions: VivaWalletPluginConfig,
 ): CollectionConfig => ({
   slug: pluginOptions.collections?.transactions || 'viva-transactions',
-  
+
   labels: {
     plural: 'Transactions',
     singular: 'Transaction',
   },
-  
+
   admin: {
     defaultColumns: ['transactionId', 'orderCode', 'statusId', 'amount', 'processedAt'],
     description: 'Viva Wallet transaction records from webhooks',
     group: 'Viva Wallet',
     useAsTitle: 'transactionId',
   },
-  
+
   access: {
     create: ({ req: { user } }) => Boolean(user),
-    delete: ({ req: { user } }) => Boolean(user?.roles?.includes('admin')),
+    delete: ({ req: { user } }) => {
+      if (!user || !('roles' in user)) {
+        return false
+      }
+      const userWithRoles = user as { roles?: string[] }
+      return Boolean(userWithRoles.roles?.includes('admin'))
+    },
     read: () => true,
-    update: ({ req: { user } }) => Boolean(user?.roles?.includes('admin')),
+    update: ({ req: { user } }) => {
+      if (!user || !('roles' in user)) {
+        return false
+      }
+      const userWithRoles = user as { roles?: string[] }
+      return Boolean(userWithRoles.roles?.includes('admin'))
+    },
   },
-  
+
   fields: [
     {
       name: 'transactionId',
@@ -75,7 +87,8 @@ export const TransactionsCollection = (
       },
       hasMany: false,
       label: 'Payment Order',
-      relationTo: pluginOptions.collections?.paymentOrders || 'viva-payment-orders',
+      relationTo: (pluginOptions.collections?.paymentOrders ||
+        'viva-payment-orders') as 'viva-payment-orders',
     },
     {
       name: 'eventTypeId',
@@ -148,9 +161,13 @@ export const TransactionsCollection = (
       },
       label: 'Card Last 4',
       validate: (value: null | string | string[] | undefined) => {
-        if (!value) {return true} // Optional field
+        if (!value) {
+          return true
+        } // Optional field
         const val = typeof value === 'string' ? value : null
-        if (!val) {return true}
+        if (!val) {
+          return true
+        }
         if (val.length !== 4 || !/^\d+$/.test(val)) {
           return 'Must be exactly 4 digits'
         }
@@ -197,7 +214,7 @@ export const TransactionsCollection = (
       required: true,
     },
   ],
-  
+
   hooks: {
     beforeChange: [
       async ({ data, operation, req }) => {
@@ -205,15 +222,16 @@ export const TransactionsCollection = (
         if (data?.orderCode && typeof data.orderCode === 'number') {
           data.orderCode = String(data.orderCode)
         }
-        
+
         // Auto-link to payment order if not set
         if (operation === 'create' && !data.paymentOrder && data.orderCode) {
           try {
             const { payload } = req
-            const paymentOrderSlug = pluginOptions.collections?.paymentOrders || 'viva-payment-orders'
-            
+            const paymentOrderSlug =
+              pluginOptions.collections?.paymentOrders || 'viva-payment-orders'
+
             const { docs } = await payload.find({
-              collection: paymentOrderSlug,
+              collection: paymentOrderSlug as 'viva-payment-orders',
               limit: 1,
               where: {
                 orderCode: {
@@ -221,61 +239,65 @@ export const TransactionsCollection = (
                 },
               },
             })
-            
+
             if (docs.length > 0) {
               data.paymentOrder = docs[0].id
             }
           } catch (error) {
             // Failed to link transaction to payment order
             if (process.env.NODE_ENV !== 'production') {
-              console.error('Failed to link transaction to payment order:', error)  
+              console.error('Failed to link transaction to payment order:', error)
             }
           }
         }
-        
+
         return data
       },
     ],
-    
+
     afterChange: [
       async ({ doc, operation, req }) => {
         // Update payment order status based on transaction
         if (operation === 'create' && doc.paymentOrder) {
           try {
             const { payload } = req
-            const paymentOrderSlug = pluginOptions.collections?.paymentOrders || 'viva-payment-orders'
-            
+            const paymentOrderSlug =
+              pluginOptions.collections?.paymentOrders || 'viva-payment-orders'
+
             // Determine new status based on transaction
-            let newStatus = 'pending'
+            let newStatus: 'cancelled' | 'completed' | 'failed' | 'pending' = 'pending'
             if (doc.statusId === 'A' && doc.eventTypeId === 1796) {
               newStatus = 'completed'
             } else if (doc.statusId === 'F' || doc.eventTypeId === 1798) {
               newStatus = 'failed'
             }
-            
+
             // Update the payment order
+            const orderId =
+              typeof doc.paymentOrder === 'string' ? doc.paymentOrder : doc.paymentOrder.id
+
             await payload.update({
-              id: doc.paymentOrder,
-              collection: paymentOrderSlug,
+              id: orderId,
+              collection: paymentOrderSlug as 'viva-payment-orders',
               data: {
                 status: newStatus,
               },
             })
-            
+
             // Updated order status
           } catch (error) {
             // Failed to update payment order status
             if (process.env.NODE_ENV !== 'production') {
-              console.error('Failed to update payment order status:', error)  
+              console.error('Failed to update payment order status:', error)
             }
           }
         }
-        
+
         return doc
       },
     ],
   },
-  
+
   // Note: Compound indexes are configured at database level
   // indexes: [
   //   {
@@ -286,7 +308,7 @@ export const TransactionsCollection = (
   //     unique: true,
   //   },
   // ],
-  
+
   timestamps: true,
 })
 

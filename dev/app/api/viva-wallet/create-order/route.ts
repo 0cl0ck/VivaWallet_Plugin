@@ -9,8 +9,7 @@ import { createOrderHandler } from '../../../../../src/endpoints/handlers.js'
  * Creates a new payment order with Viva Wallet
  */
 export async function POST(req: Request) {
-  const payload = await getPayload({ config })
+  const _payload = await getPayload({ config })
   const payloadReq = await createPayloadRequest({ config, request: req })
-  const userId = payloadReq.user?.id
-  return createOrderHandler(req, payload, userId)
+  return createOrderHandler(payloadReq)
 }

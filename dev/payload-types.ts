@@ -6,14 +6,71 @@
  * and re-run `payload generate:types` to regenerate this file.
  */
 
+/**
+ * Supported timezones in IANA format.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "supportedTimezones".
+ */
+export type SupportedTimezones =
+  | 'Pacific/Midway'
+  | 'Pacific/Niue'
+  | 'Pacific/Honolulu'
+  | 'Pacific/Rarotonga'
+  | 'America/Anchorage'
+  | 'Pacific/Gambier'
+  | 'America/Los_Angeles'
+  | 'America/Tijuana'
+  | 'America/Denver'
+  | 'America/Phoenix'
+  | 'America/Chicago'
+  | 'America/Guatemala'
+  | 'America/New_York'
+  | 'America/Bogota'
+  | 'America/Caracas'
+  | 'America/Santiago'
+  | 'America/Buenos_Aires'
+  | 'America/Sao_Paulo'
+  | 'Atlantic/South_Georgia'
+  | 'Atlantic/Azores'
+  | 'Atlantic/Cape_Verde'
+  | 'Europe/London'
+  | 'Europe/Berlin'
+  | 'Africa/Lagos'
+  | 'Europe/Athens'
+  | 'Africa/Cairo'
+  | 'Europe/Moscow'
+  | 'Asia/Riyadh'
+  | 'Asia/Dubai'
+  | 'Asia/Baku'
+  | 'Asia/Karachi'
+  | 'Asia/Tashkent'
+  | 'Asia/Calcutta'
+  | 'Asia/Dhaka'
+  | 'Asia/Almaty'
+  | 'Asia/Jakarta'
+  | 'Asia/Bangkok'
+  | 'Asia/Shanghai'
+  | 'Asia/Singapore'
+  | 'Asia/Tokyo'
+  | 'Asia/Seoul'
+  | 'Australia/Brisbane'
+  | 'Australia/Sydney'
+  | 'Pacific/Guam'
+  | 'Pacific/Noumea'
+  | 'Pacific/Auckland'
+  | 'Pacific/Fiji';
+
 export interface Config {
   auth: {
     users: UserAuthOperations;
   };
+  blocks: {};
   collections: {
     posts: Post;
     media: Media;
-    'plugin-collection': PluginCollection;
+    'viva-payment-orders': VivaPaymentOrder;
+    'viva-transactions': VivaTransaction;
     users: User;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
@@ -23,7 +80,8 @@ export interface Config {
   collectionsSelect: {
     posts: PostsSelect<false> | PostsSelect<true>;
     media: MediaSelect<false> | MediaSelect<true>;
-    'plugin-collection': PluginCollectionSelect<false> | PluginCollectionSelect<true>;
+    'viva-payment-orders': VivaPaymentOrdersSelect<false> | VivaPaymentOrdersSelect<true>;
+    'viva-transactions': VivaTransactionsSelect<false> | VivaTransactionsSelect<true>;
     users: UsersSelect<false> | UsersSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
@@ -32,8 +90,12 @@ export interface Config {
   db: {
     defaultIDType: string;
   };
-  globals: {};
-  globalsSelect: {};
+  globals: {
+    'viva-settings': VivaSetting;
+  };
+  globalsSelect: {
+    'viva-settings': VivaSettingsSelect<false> | VivaSettingsSelect<true>;
+  };
   locale: null;
   user: User & {
     collection: 'users';
@@ -67,7 +129,6 @@ export interface UserAuthOperations {
  */
 export interface Post {
   id: string;
-  addedByPlugin?: string | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -90,11 +151,109 @@ export interface Media {
   focalY?: number | null;
 }
 /**
+ * Viva Wallet payment orders
+ *
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "plugin-collection".
+ * via the `definition` "viva-payment-orders".
  */
-export interface PluginCollection {
+export interface VivaPaymentOrder {
   id: string;
+  /**
+   * 16-digit order code from Viva Wallet
+   */
+  orderCode: string;
+  /**
+   * Amount in cents (e.g., 1000 = €10.00)
+   */
+  amount: number;
+  /**
+   * 4-digit payment source code
+   */
+  sourceCode: string;
+  status: 'pending' | 'completed' | 'failed' | 'cancelled';
+  customerEmail?: string | null;
+  customerName?: string | null;
+  /**
+   * Your internal order reference
+   */
+  merchantReference?: string | null;
+  /**
+   * Viva Wallet checkout page URL
+   */
+  checkoutUrl?: string | null;
+  /**
+   * Additional data for this order
+   */
+  metadata?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * Related transactions for this order
+   */
+  transactions?: (string | VivaTransaction)[] | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Viva Wallet transaction records from webhooks
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "viva-transactions".
+ */
+export interface VivaTransaction {
+  id: string;
+  /**
+   * UUID from Viva Wallet
+   */
+  transactionId: string;
+  /**
+   * 16-digit order code
+   */
+  orderCode: string;
+  /**
+   * Related payment order
+   */
+  paymentOrder?: (string | null) | VivaPaymentOrder;
+  /**
+   * Webhook event type (1796=Payment Created, 1798=Failed)
+   */
+  eventTypeId: number;
+  statusId: 'A' | 'F' | 'E';
+  /**
+   * Transaction amount in cents
+   */
+  amount: number;
+  /**
+   * Used for webhook idempotency
+   */
+  vivaDeliveryId?: string | null;
+  customerEmail?: string | null;
+  customerName?: string | null;
+  /**
+   * Last 4 digits of the card used
+   */
+  cardLastFour?: string | null;
+  isRecurring?: boolean | null;
+  isPreAuth?: boolean | null;
+  /**
+   * Complete webhook payload from Viva Wallet
+   */
+  eventData?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  processedAt: string;
   updatedAt: string;
   createdAt: string;
 }
@@ -131,8 +290,12 @@ export interface PayloadLockedDocument {
         value: string | Media;
       } | null)
     | ({
-        relationTo: 'plugin-collection';
-        value: string | PluginCollection;
+        relationTo: 'viva-payment-orders';
+        value: string | VivaPaymentOrder;
+      } | null)
+    | ({
+        relationTo: 'viva-transactions';
+        value: string | VivaTransaction;
       } | null)
     | ({
         relationTo: 'users';
@@ -185,7 +348,6 @@ export interface PayloadMigration {
  * via the `definition` "posts_select".
  */
 export interface PostsSelect<T extends boolean = true> {
-  addedByPlugin?: T;
   updatedAt?: T;
   createdAt?: T;
 }
@@ -208,10 +370,41 @@ export interface MediaSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "plugin-collection_select".
+ * via the `definition` "viva-payment-orders_select".
  */
-export interface PluginCollectionSelect<T extends boolean = true> {
-  id?: T;
+export interface VivaPaymentOrdersSelect<T extends boolean = true> {
+  orderCode?: T;
+  amount?: T;
+  sourceCode?: T;
+  status?: T;
+  customerEmail?: T;
+  customerName?: T;
+  merchantReference?: T;
+  checkoutUrl?: T;
+  metadata?: T;
+  transactions?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "viva-transactions_select".
+ */
+export interface VivaTransactionsSelect<T extends boolean = true> {
+  transactionId?: T;
+  orderCode?: T;
+  paymentOrder?: T;
+  eventTypeId?: T;
+  statusId?: T;
+  amount?: T;
+  vivaDeliveryId?: T;
+  customerEmail?: T;
+  customerName?: T;
+  cardLastFour?: T;
+  isRecurring?: T;
+  isPreAuth?: T;
+  eventData?: T;
+  processedAt?: T;
   updatedAt?: T;
   createdAt?: T;
 }
@@ -261,6 +454,111 @@ export interface PayloadMigrationsSelect<T extends boolean = true> {
   batch?: T;
   updatedAt?: T;
   createdAt?: T;
+}
+/**
+ * Configure your Viva Wallet integration settings
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "viva-settings".
+ */
+export interface VivaSetting {
+  id: string;
+  /**
+   * Select the Viva Wallet environment to use
+   */
+  environment: 'demo' | 'live';
+  /**
+   * 🔒 This field is encrypted at rest
+   */
+  clientId: string;
+  /**
+   * 🔒 This field is encrypted at rest
+   */
+  clientSecret: string;
+  /**
+   * 4-digit payment source code from Viva Wallet
+   */
+  sourceCode: string;
+  /**
+   * 🔒 This field is encrypted at rest
+   */
+  merchantId?: string | null;
+  /**
+   * 🔒 This field is encrypted at rest
+   */
+  apiKey?: string | null;
+  /**
+   * Auto-generated key for webhook verification. Do not modify unless you know what you're doing.
+   */
+  webhookKey?: string | null;
+  /**
+   * Your webhook endpoint URL. Configure this in your Viva Wallet dashboard.
+   */
+  webhookUrl?: string | null;
+  /**
+   * Check this box and save to generate a new webhook key
+   */
+  regenerateWebhookKey?: boolean | null;
+  /**
+   * URL to redirect customers after successful payment
+   */
+  successUrl?: string | null;
+  /**
+   * URL to redirect customers after failed payment
+   */
+  failureUrl?: string | null;
+  /**
+   * How long the payment session remains valid (default: 30 minutes)
+   */
+  paymentTimeout?: number | null;
+  /**
+   * Maximum number of installments allowed (0 = disabled)
+   */
+  maxInstallments?: number | null;
+  /**
+   * Disable cash payment option at Viva Spots
+   */
+  disableCash?: boolean | null;
+  /**
+   * Disable Viva Wallet payment option
+   */
+  disableWallet?: boolean | null;
+  /**
+   * Enable support for recurring payments
+   */
+  allowRecurring?: boolean | null;
+  /**
+   * Last time the OAuth2 token was refreshed
+   */
+  lastTokenRefresh?: string | null;
+  updatedAt?: string | null;
+  createdAt?: string | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "viva-settings_select".
+ */
+export interface VivaSettingsSelect<T extends boolean = true> {
+  environment?: T;
+  clientId?: T;
+  clientSecret?: T;
+  sourceCode?: T;
+  merchantId?: T;
+  apiKey?: T;
+  webhookKey?: T;
+  webhookUrl?: T;
+  regenerateWebhookKey?: T;
+  successUrl?: T;
+  failureUrl?: T;
+  paymentTimeout?: T;
+  maxInstallments?: T;
+  disableCash?: T;
+  disableWallet?: T;
+  allowRecurring?: T;
+  lastTokenRefresh?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  globalType?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema

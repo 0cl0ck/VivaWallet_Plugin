@@ -3,7 +3,6 @@ import type {
   CreateOrderResponse,
   RefundResponse,
   VerifyTransactionResponse,
-  VivaApiError,
 } from '../types/api.js'
 import type { VivaWalletConfig } from '../types/index.js'
 
@@ -81,18 +80,6 @@ export class VivaWalletService {
       ...(data.failUrl && { failUrl: data.failUrl }),
     }
 
-    // Log the request for debugging
-    if (process.env.NODE_ENV !== 'production') {
-      console.log('Viva API Request:', {
-        // eslint-disable-line no-console
-        amount: requestBody.amount,
-        hasCustomer: !!requestBody.customer,
-        requestBody: JSON.stringify(requestBody, null, 2),
-        sourceCode: this.sourceCode,
-        url,
-      })
-    }
-
     try {
       const response = await fetch(url, {
         body: JSON.stringify(requestBody),
@@ -104,16 +91,6 @@ export class VivaWalletService {
       })
 
       const result = (await response.json()) as CreateOrderResponse
-
-      // Log the full response for debugging
-      if (process.env.NODE_ENV !== 'production') {
-        console.log('Viva API Response:', {
-          // eslint-disable-line no-console
-          result: JSON.stringify(result, null, 2),
-          status: response.status,
-          statusText: response.statusText,
-        })
-      }
 
       // Check for API errors
       // Viva Wallet API returns errorCode 0 for success, non-zero for errors
@@ -132,20 +109,14 @@ export class VivaWalletService {
       const orderCode = String(result.orderCode)
       const checkoutUrl = this.getCheckoutUrl(orderCode)
 
-      // Payment order created
-      if (process.env.NODE_ENV !== 'production') {
-        console.log(`Payment order created: ${orderCode}`) // eslint-disable-line no-console
-      }
+      // Payment order created successfully
 
       return {
         checkoutUrl,
         orderCode,
       }
     } catch (error) {
-      // Log error in development
-      if (process.env.NODE_ENV !== 'production') {
-        console.error('Failed to create payment order:', error)
-      }
+      // Error creating payment order
 
       if (error instanceof Error) {
         throw error
@@ -187,26 +158,18 @@ export class VivaWalletService {
     const token = await this.tokenManager.getToken()
     const url = `${this.getApiBaseUrl()}/checkout/v2/transactions/${transactionId}`
 
-    try {
-      const response = await fetch(url, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        method: 'GET',
-      })
+    const response = await fetch(url, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      method: 'GET',
+    })
 
-      if (!response.ok) {
-        throw new Error(`Failed to get transaction: ${response.statusText}`)
-      }
-
-      return await response.json()
-    } catch (error) {
-      // Log error in development
-      if (process.env.NODE_ENV !== 'production') {
-        console.error('Failed to get transaction:', error)
-      }
-      throw error
+    if (!response.ok) {
+      throw new Error(`Failed to get transaction: ${response.statusText}`)
     }
+
+    return await response.json()
   }
 
   /**
@@ -224,36 +187,25 @@ export class VivaWalletService {
       url += `?amount=${amount}`
     }
 
-    try {
-      const response = await fetch(url, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        method: 'DELETE',
-      })
+    const response = await fetch(url, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      method: 'DELETE',
+    })
 
-      if (!response.ok) {
-        const errorText = await response.text()
-        throw new Error(
-          `Failed to refund transaction: ${response.status} ${response.statusText}. Response: ${errorText}`,
-        )
-      }
-
-      const result = await response.json()
-
-      // Transaction refunded
-      if (process.env.NODE_ENV !== 'production') {
-        console.log(`Transaction refunded: ${transactionId}`) // eslint-disable-line no-console
-      }
-
-      return result
-    } catch (error) {
-      // Log error in development
-      if (process.env.NODE_ENV !== 'production') {
-        console.error('Failed to refund transaction:', error)
-      }
-      throw error
+    if (!response.ok) {
+      const errorText = await response.text()
+      throw new Error(
+        `Failed to refund transaction: ${response.status} ${response.statusText}. Response: ${errorText}`,
+      )
     }
+
+    const result = await response.json()
+
+    // Transaction refunded successfully
+
+    return result
   }
 
   /**
@@ -281,17 +233,11 @@ export class VivaWalletService {
 
       const result: VerifyTransactionResponse = await response.json()
 
-      // Transaction verified
-      if (process.env.NODE_ENV !== 'production') {
-        console.log(`Transaction verified: ${transactionId}`) // eslint-disable-line no-console
-      }
+      // Transaction verified successfully
 
       return result
     } catch (error) {
-      // Log error in development
-      if (process.env.NODE_ENV !== 'production') {
-        console.error('Failed to verify transaction:', error)
-      }
+      // Error verifying transaction
 
       if (error instanceof Error) {
         throw error

@@ -255,7 +255,7 @@ export const VivaSettingsGlobal = (pluginOptions: VivaWalletPluginConfig): Globa
               type: 'ui',
               admin: {
                 components: {
-                  Field: 'viva-wallet-plugin/client#BeforeDashboardClient',
+                  Field: 'viva-wallet-plugin/client#VivaSettingsView',
                 },
               },
             },

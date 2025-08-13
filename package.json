@@ -113,7 +113,10 @@
       "sharp",
       "esbuild",
       "unrs-resolver"
-    ]
+    ],
+    "overrides": {
+      "typescript": "5.6.3"
+    }
   },
   "registry": "https://registry.npmjs.org/",
   "dependencies": {}

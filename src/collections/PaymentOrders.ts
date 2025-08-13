@@ -25,7 +25,13 @@ export const PaymentOrdersCollection = (
   
   access: {
     create: ({ req: { user } }) => Boolean(user),
-    delete: ({ req: { user } }) => Boolean(user?.roles?.includes('admin')),
+    delete: ({ req: { user } }) => {
+      if (!user || !('roles' in user)) {
+        return false
+      }
+      const userWithRoles = user as { roles?: string[] }
+      return Boolean(userWithRoles.roles?.includes('admin'))
+    },
     read: () => true,
     update: ({ req: { user } }) => Boolean(user),
   },
@@ -157,7 +163,7 @@ export const PaymentOrdersCollection = (
       },
       hasMany: true,
       label: 'Transactions',
-      relationTo: pluginOptions.collections?.transactions || 'viva-transactions',
+      relationTo: (pluginOptions.collections?.transactions || 'viva-transactions') as 'viva-transactions',
     },
   ],
   

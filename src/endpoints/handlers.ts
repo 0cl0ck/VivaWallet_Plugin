@@ -1,25 +1,4 @@
-import type { Payload } from 'payload'
-
-// Type definitions for Next.js compatibility
-interface NextRequest {
-  arrayBuffer(): Promise<ArrayBuffer>
-  headers: Headers
-  json(): Promise<unknown>
-}
-
-type NextResponse = Response
-
-const NextResponse = {
-  json(body: unknown, init?: ResponseInit): Response {
-    return new Response(JSON.stringify(body), {
-      ...init,
-      headers: {
-        'Content-Type': 'application/json',
-        ...(init?.headers || {}),
-      },
-    })
-  },
-}
+import type { Payload, PayloadRequest } from 'payload'
 
 import type { CreateOrderRequest } from '../types/api.js'
 import type { PaymentOrder, VivaSettings } from '../types/index.js'
@@ -45,26 +24,22 @@ type FindResult<T> = { docs: T[]; totalDocs: number }
  * Create Order Handler
  * Handles payment order creation requests
  */
-export async function createOrderHandler(
-  req: NextRequest,
-  payload: Payload,
-  userId?: string,
-): Promise<NextResponse> {
+export async function createOrderHandler(req: PayloadRequest): Promise<Response> {
   try {
-    // Check authentication (from server-resolved user)
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    // Check authentication
+    if (!req.user) {
+      return Response.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     // Get request body
-    const body = (await req.json()) as Partial<CreateOrderRequest>
+    const body = (await req.json?.()) as Partial<CreateOrderRequest>
 
     if (!body.amount || body.amount <= 0) {
-      return NextResponse.json({ error: 'Invalid amount' }, { status: 400 })
+      return Response.json({ error: 'Invalid amount' }, { status: 400 })
     }
 
     // Prepare untyped payload to avoid host GeneratedTypes coupling
-    const p = payload as unknown as UntypedPayload
+    const p = req.payload as unknown as UntypedPayload
 
     // Get Viva settings
     const settings = (await p.findGlobal({
@@ -73,7 +48,7 @@ export async function createOrderHandler(
     })) as VivaSettings
 
     if (!settings.clientId || !settings.clientSecret || !settings.sourceCode) {
-      return NextResponse.json({ error: 'Viva Wallet is not configured' }, { status: 500 })
+      return Response.json({ error: 'Viva Wallet is not configured' }, { status: 500 })
     }
 
     // Log the request for debugging
@@ -118,7 +93,7 @@ export async function createOrderHandler(
       },
     })) as PaymentOrder
 
-    return NextResponse.json({
+    return Response.json({
       checkoutUrl: order.checkoutUrl,
       orderCode: order.orderCode,
       success: true,
@@ -131,7 +106,7 @@ export async function createOrderHandler(
       console.error('Create order error:', error)
     }
 
-    return NextResponse.json(
+    return Response.json(
       {
         error: errorMessage,
         success: false,
@@ -145,10 +120,10 @@ export async function createOrderHandler(
  * Webhook Handler
  * Processes webhook notifications from Viva Wallet
  */
-export async function webhookHandler(req: NextRequest, payload: Payload): Promise<NextResponse> {
+export async function webhookHandler(req: PayloadRequest): Promise<Response> {
   try {
-    const rawBody = await req.arrayBuffer()
-    const bodyBuffer = Buffer.from(rawBody)
+    const rawBody = await req.arrayBuffer?.()
+    const bodyBuffer = Buffer.from(rawBody || new ArrayBuffer(0))
     const bodyText = bodyBuffer.toString('utf8')
 
     // Get headers
@@ -156,7 +131,7 @@ export async function webhookHandler(req: NextRequest, payload: Payload): Promis
     const signature = req.headers.get('viva-signature') ?? undefined
     const deliveryId = req.headers.get('viva-delivery-id') ?? undefined
 
-    const p = payload as unknown as UntypedPayload
+    const p = req.payload as unknown as UntypedPayload
 
     // Get webhook secret
     const settings = (await p.findGlobal({
@@ -166,13 +141,13 @@ export async function webhookHandler(req: NextRequest, payload: Payload): Promis
 
     if (!settings.webhookKey) {
       // Webhook key not configured
-      return NextResponse.json({ error: 'Webhook not configured' }, { status: 500 })
+      return Response.json({ error: 'Webhook not configured' }, { status: 500 })
     }
 
     // Validate signature
     const validator = new WebhookValidator(settings.webhookKey)
     if (!validator.validateSignature(bodyBuffer, signature256, signature)) {
-      return NextResponse.json({ error: 'Invalid signature' }, { status: 401 })
+      return Response.json({ error: 'Invalid signature' }, { status: 401 })
     }
 
     // Check idempotency
@@ -186,7 +161,7 @@ export async function webhookHandler(req: NextRequest, payload: Payload): Promis
       })) as FindResult<unknown>
 
       if (existing.totalDocs > 0) {
-        return NextResponse.json({
+        return Response.json({
           message: 'Already processed',
           success: true,
         })
@@ -199,18 +174,18 @@ export async function webhookHandler(req: NextRequest, payload: Payload): Promis
     // Process based on event type
     switch (event.EventTypeId) {
       case 1796: // Transaction Payment Created
-        await processPaymentSuccess(payload, event, deliveryId)
+        await processPaymentSuccess(req.payload, event, deliveryId)
         break
 
       case 1798: // Transaction Failed
-        await processPaymentFailed(payload, event, deliveryId)
+        await processPaymentFailed(req.payload, event, deliveryId)
         break
 
       default:
       // Unhandled event type
     }
 
-    return NextResponse.json({ success: true })
+    return Response.json({ success: true })
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Processing failed'
 
@@ -219,7 +194,7 @@ export async function webhookHandler(req: NextRequest, payload: Payload): Promis
       console.error('Webhook processing error:', error)
     }
 
-    return NextResponse.json({ error: errorMessage }, { status: 500 })
+    return Response.json({ error: errorMessage }, { status: 500 })
   }
 }
 
@@ -227,12 +202,9 @@ export async function webhookHandler(req: NextRequest, payload: Payload): Promis
  * Webhook Verification Handler
  * Responds to Viva's webhook verification request
  */
-export async function verifyWebhookHandler(
-  req: NextRequest,
-  payload: Payload,
-): Promise<NextResponse> {
+export async function verifyWebhookHandler(req: PayloadRequest): Promise<Response> {
   try {
-    const p = payload as unknown as UntypedPayload
+    const p = req.payload as unknown as UntypedPayload
 
     // Get or create webhook key
     const settings = (await p.findGlobal({
@@ -257,7 +229,7 @@ export async function verifyWebhookHandler(
     }
 
     // Return the expected JSON response
-    return NextResponse.json({
+    return Response.json({
       Key: webhookKey,
     })
   } catch (error) {
@@ -268,7 +240,7 @@ export async function verifyWebhookHandler(
       console.error('Webhook verification error:', error)
     }
 
-    return NextResponse.json({ error: errorMessage }, { status: 500 })
+    return Response.json({ error: errorMessage }, { status: 500 })
   }
 }
 

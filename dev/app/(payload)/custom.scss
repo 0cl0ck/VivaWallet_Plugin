@@ -1,0 +1,19 @@
+/* Custom styles for Viva Wallet Plugin development environment */
+/* This file is for testing plugin UI components during development */
+
+:root {
+  /* Custom variables for plugin development testing */
+  --viva-wallet-primary: #1976d2;
+  --viva-wallet-success: #4caf50;
+  --viva-wallet-error: #f44336;
+}
+
+/* Development environment specific styles */
+.viva-wallet-dev-notice {
+  padding: 1rem;
+  background-color: #f5f5f5;
+  border-left: 4px solid var(--viva-wallet-primary);
+  margin: 1rem 0;
+}
+
+/* Placeholder for plugin component testing styles */

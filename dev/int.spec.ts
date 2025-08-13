@@ -4,49 +4,115 @@ import config from '@payload-config'
 import { createPayloadRequest, getPayload } from 'payload'
 import { afterAll, beforeAll, describe, expect, test } from 'vitest'
 
-import { customEndpointHandler } from '../src/endpoints/customEndpointHandler.js'
+import { createOrderHandler, verifyWebhookHandler, webhookHandler } from '../src/endpoints/handlers.js'
 
 let payload: Payload
 
 afterAll(async () => {
-  await payload.destroy()
+  if (payload && 'destroy' in payload && typeof payload.destroy === 'function') {
+    await payload.destroy()
+  }
 })
 
 beforeAll(async () => {
   payload = await getPayload({ config })
 })
 
-describe('Plugin integration tests', () => {
-  test('should query custom endpoint added by plugin', async () => {
-    const request = new Request('http://localhost:3000/api/my-plugin-endpoint', {
-      method: 'GET',
-    })
+describe('Viva Wallet Plugin integration tests', () => {
+  test('should have Viva Wallet collections available', () => {
+    // Check that payment orders collection exists
+    const paymentOrdersCollection = payload.collections['viva-payment-orders']
+    expect(paymentOrdersCollection).toBeDefined()
 
-    const payloadRequest = await createPayloadRequest({ config, request })
-    const response = await customEndpointHandler(payloadRequest)
-    expect(response.status).toBe(200)
-
-    const data = await response.json()
-    expect(data).toMatchObject({
-      message: 'Hello from custom endpoint',
-    })
+    // Check that transactions collection exists
+    const transactionsCollection = payload.collections['viva-transactions']
+    expect(transactionsCollection).toBeDefined()
   })
 
-  test('can create post with custom text field added by plugin', async () => {
-    const post = await payload.create({
-      collection: 'posts',
+  test('should have Viva Settings global available', () => {
+    // Check that the global exists
+    const vivaSettingsKey = 'viva-settings' as keyof typeof payload.globals
+    const vivaSettings = payload.globals[vivaSettingsKey]
+    expect(vivaSettings).toBeDefined()
+  })
+
+  test('should be able to create a payment order', async () => {
+    const order = await payload.create({
+      collection: 'viva-payment-orders',
       data: {
-        addedByPlugin: 'added by plugin',
+        amount: 1000, // €10.00
+        checkoutUrl: 'https://demo.vivapayments.com/checkout/test',
+        orderCode: 'TEST123',
+        sourceCode: 'test-source',
+        status: 'pending',
       },
     })
-    expect(post.addedByPlugin).toBe('added by plugin')
+
+    expect(order.orderCode).toBe('TEST123')
+    expect(order.amount).toBe(1000)
+    expect(order.status).toBe('pending')
   })
 
-  test('plugin creates and seeds plugin-collection', async () => {
-    expect(payload.collections['plugin-collection']).toBeDefined()
+  test('should be able to create a transaction', async () => {
+    // First create a payment order
+    const order = await payload.create({
+      collection: 'viva-payment-orders',
+      data: {
+        amount: 2000, // €20.00
+        checkoutUrl: 'https://demo.vivapayments.com/checkout/test456',
+        orderCode: 'TEST456',
+        sourceCode: 'test-source',
+        status: 'pending',
+      },
+    })
 
-    const { docs } = await payload.find({ collection: 'plugin-collection' })
+    // Then create a transaction
+    const transaction = await payload.create({
+      collection: 'viva-transactions',
+      data: {
+        amount: 2000,
+        eventTypeId: 1796, // Payment Created
+        orderCode: 'TEST456',
+        paymentOrder: order.id,
+        processedAt: new Date().toISOString(),
+        statusId: 'A',
+        transactionId: 'TRX123',
+      },
+    })
 
-    expect(docs).toHaveLength(1)
+    expect(transaction.transactionId).toBe('TRX123')
+    expect(transaction.orderCode).toBe('TEST456')
+    expect(transaction.statusId).toBe('A')
+  })
+
+  test('create order endpoint should exist', async () => {
+    const request = new Request('http://localhost:3000/api/viva-wallet/create-order', {
+      body: JSON.stringify({
+        amount: 1000,
+      }),
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      method: 'POST',
+    })
+
+    const _payloadReq = await createPayloadRequest({ 
+      config, 
+      request,
+    })
+
+    // The endpoint should exist and be callable
+    expect(createOrderHandler).toBeDefined()
+    expect(typeof createOrderHandler).toBe('function')
+  })
+
+  test('webhook endpoints should exist', () => {
+    // Test webhook verification endpoint
+    expect(verifyWebhookHandler).toBeDefined()
+    expect(typeof verifyWebhookHandler).toBe('function')
+
+    // Test webhook handler endpoint
+    expect(webhookHandler).toBeDefined()
+    expect(typeof webhookHandler).toBe('function')
   })
 })

@@ -6,6 +6,8 @@ import type { VivaWalletPluginConfig } from './types/index.js'
 import { PaymentOrdersCollection } from './collections/PaymentOrders.js'
 import { VivaSettingsGlobal } from './collections/Settings.js'
 import { TransactionsCollection } from './collections/Transactions.js'
+// Import endpoint handlers
+import { createOrderHandler, verifyWebhookHandler, webhookHandler } from './endpoints/handlers.js'
 
 /**
  * Viva Wallet Smart Checkout Plugin for Payload CMS
@@ -40,112 +42,157 @@ export const vivaWalletPlugin = (
     ...pluginOptions,
   }
 
+  // Helper functions to reduce cognitive complexity
+  const initializeConfigArrays = (config: Config): void => {
+    config.collections = config.collections || []
+    config.globals = config.globals || []
+    config.endpoints = config.endpoints || []
+  }
+
+  const addCoreCollections = (config: Config, options: VivaWalletPluginConfig): void => {
+    config.collections!.push(PaymentOrdersCollection(options))
+    config.collections!.push(TransactionsCollection(options))
+    config.globals!.push(VivaSettingsGlobal(options))
+  }
+
+  const createOrdersExtensionFields = () => ({
+    name: 'vivaPayment',
+    type: 'group' as const,
+    admin: {
+      position: 'sidebar' as const,
+    },
+    fields: [
+      {
+        name: 'orderCode',
+        type: 'text' as const,
+        admin: {
+          readOnly: true,
+        },
+        label: 'Order Code',
+      },
+      {
+        name: 'status',
+        type: 'select' as const,
+        admin: {
+          readOnly: true,
+        },
+        label: 'Payment Status',
+        options: [
+          { label: 'Pending', value: 'pending' },
+          { label: 'Completed', value: 'completed' },
+          { label: 'Failed', value: 'failed' },
+          { label: 'Cancelled', value: 'cancelled' },
+        ],
+      },
+      {
+        name: 'checkoutUrl',
+        type: 'text' as const,
+        admin: {
+          readOnly: true,
+        },
+        label: 'Checkout URL',
+      },
+    ],
+    label: 'Viva Wallet Payment',
+  })
+
+  const createProductsExtensionFields = () => ({
+    name: 'vivaWallet',
+    type: 'group' as const,
+    fields: [
+      {
+        name: 'enabled',
+        type: 'checkbox' as const,
+        defaultValue: true,
+        label: 'Enable Viva Wallet for this product',
+      },
+      {
+        name: 'sourceCode',
+        type: 'text' as const,
+        admin: {
+          description: 'Optional: Use a different source code for this product',
+        },
+        label: 'Source Code Override',
+      },
+    ],
+    label: 'Viva Wallet Settings',
+  })
+
+  const extendCollections = (config: Config, options: VivaWalletPluginConfig): void => {
+    if (!options.collections?.extend) {return}
+
+    // Extend Orders collection
+    if (options.collections.extend.orders) {
+      const ordersCollection = config.collections!.find(col => col.slug === 'orders')
+      if (ordersCollection) {
+        ordersCollection.fields.push(createOrdersExtensionFields())
+      }
+    }
+
+    // Extend Products collection
+    if (options.collections.extend.products) {
+      const productsCollection = config.collections!.find(col => col.slug === 'products')
+      if (productsCollection) {
+        productsCollection.fields.push(createProductsExtensionFields())
+      }
+    }
+  }
+
+  const setupAdminComponents = (config: Config, options: VivaWalletPluginConfig): void => {
+    // Initialize admin structure
+    config.admin = config.admin || {}
+    config.admin.components = config.admin.components || {}
+
+    // Add dashboard widget if enabled
+    if (options.admin?.dashboard) {
+      config.admin.components.beforeDashboard = config.admin.components.beforeDashboard || []
+      config.admin.components.beforeDashboard.push(
+        'viva-wallet-plugin/client#VivaDashboardWidget'
+      )
+    }
+
+    // Add custom views for settings if enabled
+    if (options.admin?.settings) {
+      config.admin.components.views = config.admin.components.views || {}
+      config.admin.components.views.VivaWalletSettings = {
+        Component: 'viva-wallet-plugin/client#VivaSettingsView',
+        path: '/admin/viva-wallet-settings',
+      }
+    }
+  }
+
+  const addApiEndpoints = (config: Config, options: VivaWalletPluginConfig): void => {
+    // Create Order endpoint
+    config.endpoints!.push({
+      handler: createOrderHandler,
+      method: 'post',
+      path: '/api/viva-wallet/create-order',
+    })
+    
+    // Webhook endpoint (POST for receiving webhooks)
+    config.endpoints!.push({
+      handler: webhookHandler,
+      method: 'post',
+      path: options.webhooks?.endpoint || '/api/viva-wallet/webhook',
+    })
+    
+    // Webhook verification endpoint (GET for Viva verification)
+    config.endpoints!.push({
+      handler: verifyWebhookHandler,
+      method: 'get',
+      path: options.webhooks?.endpoint || '/api/viva-wallet/webhook',
+    })
+  }
+
   return (config: Config): Config => {
-    // Initialize arrays if not present
-    if (!config.collections) {
-      config.collections = []
-    }
+    // Initialize required arrays
+    initializeConfigArrays(config)
 
-    if (!config.globals) {
-      config.globals = []
-    }
-
-    if (!config.endpoints) {
-      config.endpoints = []
-    }
-
-    // Add Payment Orders collection
-    config.collections.push(PaymentOrdersCollection(options))
-
-    // Add Transactions collection
-    config.collections.push(TransactionsCollection(options))
-
-    // Add Settings global
-    config.globals.push(VivaSettingsGlobal(options))
+    // Add core collections and globals
+    addCoreCollections(config, options)
 
     // Extend existing collections if requested
-    if (options.collections?.extend) {
-      // Extend Orders collection
-      if (options.collections.extend.orders) {
-        const ordersCollection = config.collections.find(
-          (col) => col.slug === 'orders'
-        )
-        
-        if (ordersCollection) {
-          ordersCollection.fields.push({
-            name: 'vivaPayment',
-            type: 'group',
-            admin: {
-              position: 'sidebar',
-            },
-            fields: [
-              {
-                name: 'orderCode',
-                type: 'text',
-                admin: {
-                  readOnly: true,
-                },
-                label: 'Order Code',
-              },
-              {
-                name: 'status',
-                type: 'select',
-                admin: {
-                  readOnly: true,
-                },
-                label: 'Payment Status',
-                options: [
-                  { label: 'Pending', value: 'pending' },
-                  { label: 'Completed', value: 'completed' },
-                  { label: 'Failed', value: 'failed' },
-                  { label: 'Cancelled', value: 'cancelled' },
-                ],
-              },
-              {
-                name: 'checkoutUrl',
-                type: 'text',
-                admin: {
-                  readOnly: true,
-                },
-                label: 'Checkout URL',
-              },
-            ],
-            label: 'Viva Wallet Payment',
-          })
-        }
-      }
-
-      // Extend Products collection
-      if (options.collections.extend.products) {
-        const productsCollection = config.collections.find(
-          (col) => col.slug === 'products'
-        )
-        
-        if (productsCollection) {
-          productsCollection.fields.push({
-            name: 'vivaWallet',
-            type: 'group',
-            fields: [
-              {
-                name: 'enabled',
-                type: 'checkbox',
-                defaultValue: true,
-                label: 'Enable Viva Wallet for this product',
-              },
-              {
-                name: 'sourceCode',
-                type: 'text',
-                admin: {
-                  description: 'Optional: Use a different source code for this product',
-                },
-                label: 'Source Code Override',
-              },
-            ],
-            label: 'Viva Wallet Settings',
-          })
-        }
-      }
-    }
+    extendCollections(config, options)
 
     /**
      * If the plugin is disabled, we still want to keep added collections/fields 
@@ -156,63 +203,10 @@ export const vivaWalletPlugin = (
     }
 
     // Add API endpoints
-    // Create Order endpoint
-    // TODO: Uncomment when endpoint is created
-    // config.endpoints.push({
-    //   path: '/api/viva-wallet/create-order',
-    //   method: 'post',
-    //   handler: createOrderHandler,
-    // })
+    addApiEndpoints(config, options)
 
-    // Webhook endpoint (POST for receiving webhooks)
-    // TODO: Uncomment when endpoint is created
-    // config.endpoints.push({
-    //   path: options.webhooks.endpoint!,
-    //   method: 'post',
-    //   handler: webhookHandler,
-    // })
-
-    // Webhook verification endpoint (GET for Viva verification)
-    // TODO: Uncomment when endpoint is created
-    // config.endpoints.push({
-    //   path: options.webhooks.endpoint!,
-    //   method: 'get',
-    //   handler: verifyWebhookHandler,
-    // })
-
-    // Add admin UI components
-    if (!config.admin) {
-      config.admin = {}
-    }
-
-    if (!config.admin.components) {
-      config.admin.components = {}
-    }
-
-    // Add dashboard widget if enabled
-    if (options.admin?.dashboard) {
-      if (!config.admin.components.beforeDashboard) {
-        config.admin.components.beforeDashboard = []
-      }
-
-      // TODO: Uncomment when components are created
-      // config.admin.components.beforeDashboard.push(
-      //   'viva-wallet-plugin/client#VivaDashboardWidget'
-      // )
-    }
-
-    // Add custom views for settings if enabled
-    if (options.admin?.settings) {
-      if (!config.admin.components.views) {
-        config.admin.components.views = {}
-      }
-
-      // TODO: Uncomment when components are created
-      // config.admin.components.views.VivaWalletSettings = {
-      //   Component: 'viva-wallet-plugin/client#VivaSettingsView',
-      //   path: '/admin/viva-wallet-settings',
-      // }
-    }
+    // Setup admin UI components
+    setupAdminComponents(config, options)
 
     // Add onInit hook for initial setup
     const incomingOnInit = config.onInit
@@ -225,20 +219,19 @@ export const vivaWalletPlugin = (
 
       // Initialize Viva Wallet settings if not present
       try {
-        // TODO: Check if settings exist and create default if not
-        // const settings = await payload.findGlobal({
-        //   slug: 'viva-settings',
-        // })
+        const settings = await payload.findGlobal({
+          slug: 'viva-settings',
+        })
         
-        // if (!settings) {
-        //   await payload.updateGlobal({
-        //     slug: 'viva-settings',
-        //     data: {
-        //       environment: options.environment,
-        //       webhookUrl: `${payload.config.serverURL}${options.webhooks.endpoint}`,
-        //     },
-        //   })
-        // }
+        if (!settings) {
+          await payload.updateGlobal({
+            slug: 'viva-settings',
+            data: {
+              environment: options.environment || 'demo',
+              webhookUrl: `${payload.config.serverURL}${options.webhooks?.endpoint || '/api/viva-wallet/webhook'}`,
+            },
+          })
+        }
 
         // Viva Wallet Plugin initialized successfully
       } catch (error) {

@@ -1,6 +1,9 @@
 {
   "compilerOptions": {
     "baseUrl": ".",
+    "paths": {
+      "@payload-config": ["./dev/payload.config.ts"]
+    },
     "lib": [
       "DOM",
       "DOM.Iterable",
