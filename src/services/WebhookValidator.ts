@@ -34,10 +34,9 @@ export class WebhookValidator {
       // Use timing-safe comparison to prevent timing attacks
       const isValid = timingSafeCompare(signature.toLowerCase(), calculated.toLowerCase())
       
-      if (isValid) {
-        // Webhook signature validated (SHA-1, legacy)
-      } else {
-        // Invalid webhook signature (SHA-1)
+      // Log validation result in development mode
+      if (process.env.NODE_ENV === 'development' && !isValid) {
+        console.debug('Invalid webhook signature (SHA-1)')
       }
       
       return isValid
@@ -65,10 +64,9 @@ export class WebhookValidator {
       // Use timing-safe comparison to prevent timing attacks
       const isValid = timingSafeCompare(signature.toLowerCase(), calculated.toLowerCase())
       
-      if (isValid) {
-        // Webhook signature validated (SHA-256)
-      } else {
-        // Invalid webhook signature (SHA-256)
+      // Log validation result in development mode
+      if (process.env.NODE_ENV === 'development' && !isValid) {
+        console.debug('Invalid webhook signature (SHA-256)')
       }
       
       return isValid
