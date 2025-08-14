@@ -42,6 +42,9 @@ jobs:
       - name: Run E2E tests
         run: pnpm test:e2e
         continue-on-error: true
+        env:
+          NODE_ENV: test
+          PAYLOAD_SECRET: test-secret_key
       
       - name: SonarQube Scan (SonarCloud)
         uses: SonarSource/sonarqube-scan-action@v5.2.0
