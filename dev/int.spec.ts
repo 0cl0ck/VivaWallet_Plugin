@@ -29,11 +29,19 @@ describe('Viva Wallet Plugin integration tests', () => {
     expect(transactionsCollection).toBeDefined()
   })
 
-  test('should have Viva Settings global available', () => {
-    // Check that the global exists
-    const vivaSettingsKey = 'viva-settings' as keyof typeof payload.globals
-    const vivaSettings = payload.globals[vivaSettingsKey]
+  test('should have Viva Settings global available', async () => {
+    // Retry logic to wait for the global to be seeded
+    let vivaSettings
+    for (let i = 0; i < 5; i++) {
+      vivaSettings = await payload.findGlobal({ slug: 'viva-settings' })
+      if (vivaSettings && vivaSettings.environment) {
+        break
+      }
+      await new Promise((resolve) => setTimeout(resolve, 500))
+    }
+
     expect(vivaSettings).toBeDefined()
+    expect(vivaSettings!.environment).toBeDefined()
   })
 
   test('should be able to create a payment order', async () => {

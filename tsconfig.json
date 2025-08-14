@@ -38,4 +38,8 @@
     "./dev/next-env.d.ts",
     "./playwright.config.js",
   ],
+  "exclude": [
+    "**/e2e.spec.ts",
+    "**/e2e.spec.js"
+  ],
 }

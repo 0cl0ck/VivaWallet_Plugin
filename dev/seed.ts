@@ -24,27 +24,29 @@ export const seed = async (payload: Payload) => {
     const vivaSettings = await payload.findGlobal({
       slug: 'viva-settings',
     })
-    
-    if (!vivaSettings) {
+
+    // findGlobal can return an empty object if the global exists but has no values.
+    // We check for a property that should exist if it's seeded.
+    if (!vivaSettings || !vivaSettings.environment) {
       await payload.updateGlobal({
         slug: 'viva-settings',
         data: {
-          environment: 'demo',
-          sourceCode: '0000',
           clientId: 'test-client-id',
           clientSecret: 'test-client-secret',
+          environment: 'demo',
+          sourceCode: '0000',
         },
       })
     }
-  } catch (error) {
-    // Global might not exist yet, create it
+  } catch {
+    // This case handles if the global doesn't exist at all, triggering an error.
     await payload.updateGlobal({
       slug: 'viva-settings',
       data: {
-        environment: 'demo',
-        sourceCode: '0000',
         clientId: 'test-client-id',
         clientSecret: 'test-client-secret',
+        environment: 'demo',
+        sourceCode: '0000',
       },
     })
   }
