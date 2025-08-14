@@ -41,7 +41,7 @@ describe('Viva Wallet Plugin integration tests', () => {
     }
 
     expect(vivaSettings).toBeDefined()
-    expect(vivaSettings!.environment).toBeDefined()
+    expect(vivaSettings?.environment).toBeDefined()
   })
 
   test('should be able to create a payment order', async () => {
